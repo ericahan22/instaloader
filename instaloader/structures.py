@@ -457,7 +457,7 @@ class Post:
         """Timestamp when the post was created"""
         return (self._node["date"]
                 if "date" in self._node
-                else self._node["taken_at_timestamp"])
+                else self._node["taken_at"])
 
     def get_is_videos(self) -> List[bool]:
         """

@@ -1090,23 +1090,96 @@ class Instaloader:
         :return: Iterator over Posts of the user's feed.
         :raises LoginRequiredException: If called without being logged in.
         """
+        import json
+        
+        CSRFTOKEN = os.getenv("CSRFTOKEN")
+        SESSIONID = os.getenv("SESSIONID")
+        DS_USER_ID = os.getenv("DS_USER_ID")
+        MID = os.getenv("MID")
+        IG_DID = os.getenv("IG_DID")
 
-        data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
+        url = "https://www.instagram.com/graphql/query"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
+            "X-FB-Friendly-Name": "PolarisFeedRootPaginationCachedQuery_subscribe",
+            "X-CSRFToken": CSRFTOKEN,
+            "X-IG-App-ID": "936619743392459",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://www.instagram.com/",
+            "Origin": "https://www.instagram.com"
+        }
+        cookies = {
+            "sessionid": SESSIONID,
+            "csrftoken": CSRFTOKEN,
+            "ds_user_id": DS_USER_ID,
+            "mid": MID,
+            "ig_did": IG_DID
+        }
+        after_cursor = None
 
         while True:
-            feed = data["user"]["edge_web_feed_timeline"]
-            for edge in feed["edges"]:
-                node = edge["node"]
-                if node.get("__typename") in Post.supported_graphql_types() and node.get("shortcode") is not None:
-                    yield Post(self.context, node)
-            if not feed["page_info"]["has_next_page"]:
+            variables = {
+                "after": after_cursor,
+                "before": None,
+                "data": {"device_id":IG_DID,
+                        "is_async_ads_double_request":"0",
+                        "is_async_ads_in_headload_enabled":"0",
+                        "is_async_ads_rti":"0",
+                        "rti_delivery_backend":"0",},
+                "first": 12,
+                "last": None,
+                "variant": "home",
+                "__relay_internal__pv__PolarisIsLoggedInrelayprovider": True,
+                "__relay_internal__pv__PolarisShareSheetV3relayprovider": True
+            }
+            payload = {
+                "doc_id": "24408622975398530",
+                "variables": json.dumps(variables)
+            }
+            response = requests.post(url, headers=headers, cookies=cookies, data=payload)
+            data = response.json().get("data")
+            feed = data.get("xdt_api__v1__feed__timeline__connection")
+
+            if not feed:
+                print("No feed found")
                 break
-            data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3",
-                                              {'fetch_media_item_count': 12,
-                                               'fetch_media_item_cursor': feed["page_info"]["end_cursor"],
-                                               'fetch_comment_count': 4,
-                                               'fetch_like': 10,
-                                               'has_stories': False})["data"]
+            for edge in feed.get("edges", []):
+                node = edge.get("node", {})
+                media = node.get("media")
+                if not media:
+                    print("No media - skipping")
+                    continue
+                if not ("shortcode" in media or "code" in media):
+                    print("No shortcode - skipping")
+                    continue
+                caption = media.get("caption")
+                if isinstance(caption, dict):
+                    media["caption"] = caption.get("text")
+                yield Post(self.context, media)
+                
+            page_info = feed.get("page_info", {})
+            if not page_info.get("has_next_page"):
+                print("No more pages")
+                break
+            after_cursor = page_info.get("end_cursor")
+
+        ### ORIGINAL ###
+        # data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
+
+        # while True:
+        #     feed = data["user"]["edge_web_feed_timeline"]
+        #     for edge in feed["edges"]:
+        #         node = edge["node"]
+        #         if node.get("__typename") in Post.supported_graphql_types() and node.get("shortcode") is not None:
+        #             yield Post(self.context, node)
+        #     if not feed["page_info"]["has_next_page"]:
+        #         break
+        #     data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3",
+        #                                       {'fetch_media_item_count': 12,
+        #                                        'fetch_media_item_cursor': feed["page_info"]["end_cursor"],
+        #                                        'fetch_comment_count': 4,
+        #                                        'fetch_like': 10,
+        #                                        'has_stories': False})["data"]
 
     @_requires_login
     def download_feed_posts(self, max_count: Optional[int] = None, fast_update: bool = False,
