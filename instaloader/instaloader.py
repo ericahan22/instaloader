@@ -1137,7 +1137,16 @@ class Instaloader:
                 "variables": json.dumps(variables)
             }
             response = requests.post(url, headers=headers, cookies=cookies, data=payload)
-            data = response.json().get("data")
+            try:
+                json = response.json()
+            except:
+                print("Response: ", response.text[:500])
+                break
+
+            data = json.get("data")
+            if data is None:
+                print("No 'data' in response JSON. Full JSON: ", json)
+                break
             feed = data.get("xdt_api__v1__feed__timeline__connection")
 
             if not feed:
