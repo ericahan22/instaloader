@@ -1138,12 +1138,12 @@ class Instaloader:
             }
             response = requests.post(url, headers=headers, cookies=cookies, data=payload)
             try:
-                json = response.json()
+                res_json = response.json()
             except:
                 print("Response: ", response.text[:500])
                 break
 
-            data = json.get("data")
+            data = res_json.get("data")
             if data is None:
                 print("No 'data' in response JSON. Full JSON: ", json)
                 break
