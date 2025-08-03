@@ -1100,10 +1100,10 @@ class Instaloader:
 
         url = "https://www.instagram.com/graphql/query"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
+            "User-Agent": os.getenv("USER_AGENT"),
             "X-FB-Friendly-Name": "PolarisFeedRootPaginationCachedQuery_subscribe",
             "X-CSRFToken": CSRFTOKEN,
-            "X-IG-App-ID": "936619743392459",
+            "X-IG-App-ID": os.getenv("X_IG_APP_ID"),
             "Content-Type": "application/x-www-form-urlencoded",
             "Referer": "https://www.instagram.com/",
             "Origin": "https://www.instagram.com"
@@ -1133,7 +1133,7 @@ class Instaloader:
                 "__relay_internal__pv__PolarisShareSheetV3relayprovider": True
             }
             payload = {
-                "doc_id": "24408622975398530",
+                "doc_id": os.getenv("DOC_ID"),
                 "variables": json.dumps(variables)
             }
             response = requests.post(url, headers=headers, cookies=cookies, data=payload)
