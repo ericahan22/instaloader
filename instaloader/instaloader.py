@@ -1091,6 +1091,7 @@ class Instaloader:
         :raises LoginRequiredException: If called without being logged in.
         """
         import json
+        import requests
         
         CSRFTOKEN = os.getenv("CSRFTOKEN")
         SESSIONID = os.getenv("SESSIONID")
@@ -1099,7 +1100,8 @@ class Instaloader:
         IG_DID = os.getenv("IG_DID")
 
         url = "https://www.instagram.com/graphql/query"
-        headers = {
+        s = requests.Session()
+        s.headers.update({
             "User-Agent": os.getenv("USER_AGENT"),
             "X-FB-Friendly-Name": "PolarisFeedRootPaginationCachedQuery_subscribe",
             "X-CSRFToken": CSRFTOKEN,
@@ -1107,14 +1109,14 @@ class Instaloader:
             "Content-Type": "application/x-www-form-urlencoded",
             "Referer": "https://www.instagram.com/",
             "Origin": "https://www.instagram.com"
-        }
-        cookies = {
+        })
+        s.cookies.update({
             "sessionid": SESSIONID,
             "csrftoken": CSRFTOKEN,
             "ds_user_id": DS_USER_ID,
             "mid": MID,
             "ig_did": IG_DID
-        }
+        })
         after_cursor = None
 
         while True:
@@ -1136,11 +1138,15 @@ class Instaloader:
                 "doc_id": os.getenv("DOC_ID"),
                 "variables": json.dumps(variables)
             }
-            response = requests.post(url, headers=headers, cookies=cookies, data=payload)
             try:
+                response = s.post(url, data=payload, timeout=30)
+                response.raise_for_status()
                 res_json = response.json()
-            except:
-                print("Response: ", response.text[:500])
+            except requests.exceptions.RequestException as e:
+                print(f"Request failed: {e}")
+                break
+            except requests.exceptions.JSONDecodeError:
+                print(f"Failed to decode JSON: {response.text[:500]}")
                 break
 
             data = res_json.get("data")
