@@ -35,7 +35,7 @@ keywords = (['instagram', 'instagram-scraper', 'instagram-client', 'instagram-fe
 
 setup(
     name='instaloader',
-    version=get_version(),
+    version='4.14.2+custom1',
     packages=['instaloader'],
     package_data={'instaloader': ['py.typed']},
     url='https://instaloader.github.io/',
