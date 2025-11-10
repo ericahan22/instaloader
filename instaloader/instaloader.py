@@ -1143,7 +1143,7 @@ class Instaloader:
                 "variables": json.dumps(variables)
             }
             try:
-                response = s.post(url, data=payload, timeout=self.request_timeout)
+                response = s.post(url, data=payload, timeout=self.context.request_timeout)
                 response.raise_for_status()
                 res_json = response.json()
                 self.context.log(f"Received response for page {page_num}.")
