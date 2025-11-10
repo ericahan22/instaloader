@@ -1148,30 +1148,30 @@ class Instaloader:
                 res_json = response.json()
                 self.context.log(f"Received response for page {page_num}.")
             except requests.exceptions.RequestException as e:
-                self.context.log(f"Request failed: {e}", level="error")
+                self.context.log(f"[Instaloader] ERROR - Request failed: {e}")
                 break
             except requests.exceptions.JSONDecodeError:
-                self.context.log(f"Failed to decode JSON: {response.text[:500]}", level="error")
+                self.context.log(f"[Instaloader] ERROR - Failed to decode JSON: {response.text[:500]}")
                 break
 
             data = res_json.get("data")
             if data is None:
-                self.context.log(f"No 'data' in response JSON. Full JSON: {json.dumps(res_json)[:500]}", level="error")
+                self.context.log(f"[Instaloader] ERROR - No 'data' in response JSON. Full JSON: {json.dumps(res_json)[:500]}")
                 break
             feed = data.get("xdt_api__v1__feed__timeline__connection")
 
             if not feed:
-                self.context.log("No feed found in response.", level="warning")
+                self.context.log("[Instaloader] WARNING - No feed found in response.")
                 break
             post_count = 0
             for edge in feed.get("edges", []):
                 node = edge.get("node", {})
                 media = node.get("media")
                 if not media:
-                    self.context.log("No media in node - skipping.", level="warning")
+                    self.context.log("[Instaloader] WARNING - No media in node - skipping.")
                     continue
                 if not ("shortcode" in media or "code" in media):
-                    self.context.log("No shortcode in media - skipping.", level="warning")
+                    self.context.log("[Instaloader] WARNING - No shortcode in media - skipping.")
                     continue
                 caption = media.get("caption")
                 if isinstance(caption, dict):
