@@ -1118,8 +1118,12 @@ class Instaloader:
             "ig_did": IG_DID
         })
         after_cursor = None
+        page_num = 1
+
+        self.context.log("Starting to fetch feed posts...")
 
         while True:
+            self.context.log(f"Requesting feed page {page_num} (after_cursor={after_cursor})...")
             variables = {
                 "after": after_cursor,
                 "before": None,
@@ -1139,44 +1143,50 @@ class Instaloader:
                 "variables": json.dumps(variables)
             }
             try:
-                response = s.post(url, data=payload, timeout=30)
+                response = s.post(url, data=payload, timeout=self.request_timeout)
                 response.raise_for_status()
                 res_json = response.json()
+                self.context.log(f"Received response for page {page_num}.")
             except requests.exceptions.RequestException as e:
-                print(f"Request failed: {e}")
+                self.context.log(f"Request failed: {e}", level="error")
                 break
             except requests.exceptions.JSONDecodeError:
-                print(f"Failed to decode JSON: {response.text[:500]}")
+                self.context.log(f"Failed to decode JSON: {response.text[:500]}", level="error")
                 break
 
             data = res_json.get("data")
             if data is None:
-                print("No 'data' in response JSON. Full JSON: ", json)
+                self.context.log(f"No 'data' in response JSON. Full JSON: {json.dumps(res_json)[:500]}", level="error")
                 break
             feed = data.get("xdt_api__v1__feed__timeline__connection")
 
             if not feed:
-                print("No feed found")
+                self.context.log("No feed found in response.", level="warning")
                 break
+            post_count = 0
             for edge in feed.get("edges", []):
                 node = edge.get("node", {})
                 media = node.get("media")
                 if not media:
-                    print("No media - skipping")
+                    self.context.log("No media in node - skipping.", level="warning")
                     continue
                 if not ("shortcode" in media or "code" in media):
-                    print("No shortcode - skipping")
+                    self.context.log("No shortcode in media - skipping.", level="warning")
                     continue
                 caption = media.get("caption")
                 if isinstance(caption, dict):
                     media["caption"] = caption.get("text")
+                self.context.log(f"Yielding post with shortcode: {media.get('shortcode', media.get('code'))}")
                 yield Post(self.context, media)
-                
+                post_count += 1
+
+            self.context.log(f"Fetched {post_count} posts from page {page_num}.")
             page_info = feed.get("page_info", {})
             if not page_info.get("has_next_page"):
-                print("No more pages")
+                self.context.log("No more pages in feed.")
                 break
             after_cursor = page_info.get("end_cursor")
+            page_num += 1
 
         ### ORIGINAL ###
         # data = self.context.graphql_query("d6f4427fbe92d846298cf93df0b937d3", {})["data"]
