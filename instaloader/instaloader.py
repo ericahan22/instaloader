@@ -1120,10 +1120,8 @@ class Instaloader:
         after_cursor = None
         page_num = 1
 
-        self.context.log("Starting to fetch feed posts...")
-
         while True:
-            self.context.log(f"Requesting feed page {page_num} (after_cursor={after_cursor})...")
+            self.context.log(f"[Instaloader] DEBUG - Requesting feed page {page_num}...")
             variables = {
                 "after": after_cursor,
                 "before": None,
@@ -1146,7 +1144,6 @@ class Instaloader:
                 response = s.post(url, data=payload, timeout=self.context.request_timeout)
                 response.raise_for_status()
                 res_json = response.json()
-                self.context.log(f"Received response for page {page_num}.")
             except requests.exceptions.RequestException as e:
                 self.context.log(f"[Instaloader] ERROR - Request failed: {e}")
                 break
@@ -1176,14 +1173,13 @@ class Instaloader:
                 caption = media.get("caption")
                 if isinstance(caption, dict):
                     media["caption"] = caption.get("text")
-                self.context.log(f"Yielding post with shortcode: {media.get('shortcode', media.get('code'))}")
                 yield Post(self.context, media)
                 post_count += 1
 
-            self.context.log(f"Fetched {post_count} posts from page {page_num}.")
+            self.context.log(f"[Instaloader] INFO - Fetched {post_count} posts from page {page_num}.")
             page_info = feed.get("page_info", {})
             if not page_info.get("has_next_page"):
-                self.context.log("No more pages in feed.")
+                self.context.log("[Instaloader] INFO - No more pages in feed.")
                 break
             after_cursor = page_info.get("end_cursor")
             page_num += 1
